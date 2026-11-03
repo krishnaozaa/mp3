@@ -41,13 +41,29 @@ async function boot() {
 }
 
 async function shutdown() {
-    if (!OWNS_DB) return;
+    if (!OWNS_DB) {
+        // Against a deployed API there is no database handle, so clean up through
+        // the API itself: remove exactly the documents this run created, so the
+        // grading database is left as we found it.
+        let left = 0;
+        for (const [kind, ids] of [['tasks', created.tasks], ['users', created.users]]) {
+            for (const id of ids) {
+                const r = await DEL(`/${kind}/${id}`);
+                if (r.status !== 200 && r.status !== 204 && r.status !== 404) left++;
+            }
+        }
+        console.log(left ? `\nWARNING: ${left} test documents could not be deleted; check the database.`
+                         : `\nCleaned up ${created.tasks.size + created.users.size} test documents.`);
+        return;
+    }
     await reset();
     await mongoose.disconnect();
     if (mem) await mem.stop();
 }
 
 // ---------------------------------------------------------------- http helper
+
+const created = { users: new Set(), tasks: new Set() };
 
 async function req(method, path, body, { rawBody = false, contentType } = {}) {
     const opts = { method, headers: {} };
@@ -59,6 +75,12 @@ async function req(method, path, body, { rawBody = false, contentType } = {}) {
     const text = await res.text();
     let json = null;
     try { json = JSON.parse(text); } catch { /* non-JSON body */ }
+
+    // Remember what we create so a run against a deployed API can clean up
+    if (!OWNS_DB && res.status === 201 && json && json.data && json.data._id) {
+        const bucket = path.startsWith('/users') ? created.users : path.startsWith('/tasks') ? created.tasks : null;
+        if (bucket) bucket.add(json.data._id);
+    }
     return { status: res.status, json, text, data: json && json.data };
 }
 
