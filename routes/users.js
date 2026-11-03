@@ -103,7 +103,7 @@ router.delete('/:id', async (req, res) => {
     // Unassign all of this user's tasks, including completed ones
     await Task.updateMany({ assignedUser: uid }, { $set: { assignedUser: '', assignedUserName: 'unassigned' } });
     await User.deleteOne({ _id: user._id });
-    return send(res, 200, 'User deleted', user);
+    return res.status(204).end(); // 204 No Content: nothing left to describe
   } catch (err) {
     return handleError(res, err);
   }

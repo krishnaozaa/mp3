@@ -522,8 +522,8 @@ test('DELETE /tasks/:id removes the task from its user pendingTasks', async () =
     const u = await mkUser();
     const t = await mkTask({ assignedUser: u._id });
     const r = await DEL(`/tasks/${t._id}`);
-    check(r.status === 200 || r.status === 204, 'DELETE /tasks status is 200 or 204', `got ${r.status}`);
-    if (r.status !== 204) shape(r, 'DELETE /tasks');
+    eq(r.status, 204, 'DELETE /tasks returns 204 No Content');
+    eq(r.text, '', 'DELETE /tasks returns an empty body');
     status(await GET(`/tasks/${t._id}`), 404, 'GET the deleted task');
     eqSet((await getUser(u._id)).pendingTasks, [], 'the task is gone from pendingTasks');
     status(await DEL(`/tasks/${t._id}`), 404, 'DELETE the same task twice');
@@ -534,8 +534,8 @@ test('DELETE /users/:id unassigns all of its tasks, completed ones too', async (
     const pending = await mkTask({ assignedUser: u._id });
     const done = await mkTask({ assignedUser: u._id, completed: true });
     const r = await DEL(`/users/${u._id}`);
-    check(r.status === 200 || r.status === 204, 'DELETE /users status is 200 or 204', `got ${r.status}`);
-    if (r.status !== 204) shape(r, 'DELETE /users');
+    eq(r.status, 204, 'DELETE /users returns 204 No Content');
+    eq(r.text, '', 'DELETE /users returns an empty body');
     status(await GET(`/users/${u._id}`), 404, 'GET the deleted user');
 
     for (const [label, t] of [['pending', pending], ['completed', done]]) {

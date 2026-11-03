@@ -115,7 +115,7 @@ router.delete('/:id', async (req, res) => {
     const tid = task._id.toString();
     await User.updateMany({ pendingTasks: tid }, { $pull: { pendingTasks: tid } });
     await Task.deleteOne({ _id: task._id });
-    return send(res, 200, 'Task deleted', task);
+    return res.status(204).end(); // 204 No Content: nothing left to describe
   } catch (err) {
     return handleError(res, err);
   }
