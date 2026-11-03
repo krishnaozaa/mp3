@@ -86,12 +86,24 @@ async function listHandler(Model, defaultLimit, req, res) {
 async function getOneHandler(Model, label, req, res) {
   try {
     if (!isObjectId(req.params.id)) throw new ApiError(404, `${label} not found`);
-    const select = parseParam(req, 'select');
-    if (select !== undefined && !isPlainObject(select)) throw new ApiError(400, "'select' must be a JSON object");
+
+    // The URL id is checked before the query string, so a request for a resource
+    // that does not exist is a 404 even when 'select' is malformed. Hold the
+    // select error back until we know the resource is there.
+    let select, selectError;
+    try {
+      select = parseParam(req, 'select');
+      if (select !== undefined && !isPlainObject(select)) throw new ApiError(400, "'select' must be a JSON object");
+    } catch (err) {
+      selectError = err;
+      select = undefined;
+    }
+
     let query = Model.findById(req.params.id);
     if (select) query = query.select(select);
     const doc = await query.exec();
     if (!doc) throw new ApiError(404, `${label} not found`);
+    if (selectError) throw selectError;
     return send(res, 200, 'OK', doc);
   } catch (err) {
     return handleError(res, err);
